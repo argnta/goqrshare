@@ -30,12 +30,15 @@ func (c Config) Validate() error {
 		return err
 	}
 
-	return err
+	return nil
 }
 
 func (c Config) validateTarget() error {
 	if len(c.Files) == 0 && !c.IsUpload {
-		return aperror.ErrNoTarget
+		return &aperror.Error{
+			Kind: aperror.KindNoTarget,
+			Msg:  "tidak ada file yang dibagikan dan mode upload tidak aktif",
+		}
 	}
 	return nil
 }
@@ -45,7 +48,10 @@ func (c Config) validatePort() error {
 		return nil
 	}
 	if c.Port < 1 || c.Port > 65535 {
-		return fmt.Errorf("%w: %d", aperror.ErrPortInvalid, c.Port)
+		return &aperror.Error{
+			Kind: aperror.KindPortInvalid,
+			Msg:  fmt.Sprintf("port di luar rentang 1-65535: %d", c.Port),
+		}
 	}
 	return nil
 }
@@ -55,26 +61,45 @@ func (c Config) validateDir() error {
 		return nil
 	}
 	if !c.IsUpload {
-		return aperror.ErrDirWithoutUpload
+		return &aperror.Error{
+			Kind: aperror.KindDirWithoutUpload,
+			Msg:  "--dir hanya berlaku bersama --upload",
+		}
 	}
 	return nil
 }
 
 func (c Config) validateFiles() error {
 	if len(c.Files) > 1 {
-		return aperror.ErrMultipleFiles
+		return &aperror.Error{
+			Kind: aperror.KindMultipleFiles,
+			Msg:  "satu file saja untuk saat ini",
+		}
 	}
+
 	for _, path := range c.Files {
-		info, err := os.Stat(path)
-		if err != nil {
-			if os.IsNotExist(err) {
-				return fmt.Errorf("%w: %s", aperror.ErrFileNotFound, path)
+		info, statErr := os.Stat(path)
+		if statErr != nil {
+			if os.IsNotExist(statErr) {
+				return &aperror.Error{
+					Kind: aperror.KindFileNotFound,
+					Msg:  "file tidak ditemukan: " + path,
+					Err:  statErr,
+				}
 			}
-			return fmt.Errorf("%w: %s", aperror.ErrFileNotReadable, path)
+			return &aperror.Error{
+				Kind: aperror.KindFileNotReadable,
+				Msg:  "file tidak bisa dibaca: " + path,
+				Err:  statErr,
+			}
 		}
 		if info.IsDir() {
-			return fmt.Errorf("%w: %s", aperror.ErrIsDirectory, path)
+			return &aperror.Error{
+				Kind: aperror.KindIsDirectory,
+				Msg:  "folder belum didukung: " + path,
+			}
 		}
 	}
+
 	return nil
 }

@@ -24,7 +24,11 @@ func Parse(args []string) (Config, error) {
 
 	err := fs.Parse(args)
 	if err != nil {
-		return Config{}, apperror.ErrParse
+		return Config{}, &apperror.Error{
+			Kind: apperror.KindParse,
+			Msg:  "gagal membaca argumen",
+			Err:  err,
+		}
 	}
 
 	cfg.Files = fs.Args()
