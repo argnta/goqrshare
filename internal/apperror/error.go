@@ -19,6 +19,7 @@ const (
 	KindUploadTooLarge
 	KindParse
 	KindAmbiguousIface
+	KindFailGenerateToken
 )
 
 type Error struct {
