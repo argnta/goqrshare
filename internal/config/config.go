@@ -3,10 +3,15 @@ package config
 import "time"
 
 type Config struct {
-	Path       string
-	Port       int
-	IsUpload   bool
-	IsOneTime  bool
-	DestFolder string
-	Date       time.Time
+    Files       []string      // file yang dibagikan (dari fs.Args())
+    Port        int           // --port
+    IsUpload    bool          // --upload
+    UploadDir   string        // --dir
+    Iface       string        // --iface
+    IsOneTime   bool          // --once
+    TTL         time.Duration // --ttl
+    Token       string        // --token
+    NoQR        bool          // --no-qr
+    Verbose     bool          // --verbose
+    ShowVersion bool          // --version
 }
