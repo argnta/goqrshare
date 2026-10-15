@@ -1,5 +1,7 @@
 package apperror
 
+import "net/http"
+
 type KindError int
 
 const (
@@ -44,6 +46,11 @@ type UploadResponse struct {
 	Status   string `json:"status"`
 	Message  string `json:"message"`
 	Filename string `json:"filename"`
+}
+
+type StatusResponseWriter struct {
+	http.ResponseWriter
+	Status int
 }
 
 func (e *Error) Error() string {
