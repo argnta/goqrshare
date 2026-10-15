@@ -20,6 +20,7 @@ const (
 	KindParse
 	KindAmbiguousIface
 	KindFailGenerateToken
+	KindRunError
 )
 
 type Error struct {

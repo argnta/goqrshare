@@ -2,6 +2,7 @@ package appserver
 
 import (
 	"net/http"
+	"sync/atomic"
 	"time"
 )
 
@@ -18,9 +19,8 @@ type Options struct {
 }
 
 type MainServer struct {
-	Server        http.Server
+	Server        *http.Server
 	Options       Options
-	Token         string
-	DownloadCount int
+	DownloadCount atomic.Int64
 	Done          chan struct{}
 }
