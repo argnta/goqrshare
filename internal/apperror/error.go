@@ -23,12 +23,27 @@ const (
 	KindRunError
 	KindServerNotInitiated
 	KindServerFailShutdown
+	KindFailOpenFile
+	KindFailStatFile
+	KindFailSaveFile
+	KindFailCreateFile
 )
 
 type Error struct {
 	Kind KindError
 	Msg  string
 	Err  error
+}
+
+type ErrorResponse struct {
+	Code string `json:"code"`
+	Msg  string `json:"msg"`
+}
+
+type UploadResponse struct {
+	Status   string `json:"status"`
+	Message  string `json:"message"`
+	Filename string `json:"filename"`
 }
 
 func (e *Error) Error() string {
