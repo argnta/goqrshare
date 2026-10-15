@@ -21,6 +21,8 @@ const (
 	KindAmbiguousIface
 	KindFailGenerateToken
 	KindRunError
+	KindServerNotInitiated
+	KindServerFailShutdown
 )
 
 type Error struct {

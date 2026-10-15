@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -28,7 +29,7 @@ func NewServer(opts Options) *MainServer {
 
 	dataServer.Server = &http.Server{
 		Handler:           handler,
-		ReadHeaderTimeout: 10 * time.Second,
+		ReadHeaderTimeout: 10 * time.Second, 
 	}
 
 	return dataServer
@@ -50,13 +51,22 @@ func (s *MainServer) Run(ctx context.Context) error {
 
 	s.Options.Port = listener.Addr().(*net.TCPAddr).Port
 
-	s.Server = &http.Server{
-		// Handler: //myhandler,
+	if s.Options.Duration > 0 {
+		var once sync.Once
+		closeDone := func() {
+			once.Do(func() {
+				close(s.Done)
+			})
+		}
+
+		timer := time.AfterFunc(s.Options.Duration, closeDone)
+		defer timer.Stop()
 	}
 
 	errChan := make(chan error, 1)
 	go func() {
-		if err := s.Server.Serve(listener); err != nil && err != http.ErrServerClosed {
+		err := s.Server.Serve(listener)
+		if err != nil && err != http.ErrServerClosed {
 			errChan <- err
 		}
 	}()
@@ -71,5 +81,28 @@ func (s *MainServer) Run(ctx context.Context) error {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	return s.Server.Shutdown(shutdownCtx)
+	return s.Shutdown(shutdownCtx)
+}
+
+func (s *MainServer) Shutdown(ctx context.Context) error {
+	if s.Server == nil {
+		errNil := &apperror.Error{
+			Kind: apperror.KindServerNotInitiated,
+			Msg:  "Server not initiated yet",
+			Err:  nil,
+		}
+		return errNil
+	}
+
+	err := s.Server.Shutdown(ctx)
+	if err != nil {
+		errShutdown := &apperror.Error{
+			Kind: apperror.KindServerFailShutdown,
+			Msg:  "Shutdown failed",
+			Err:  err,
+		}
+		return errShutdown
+	}
+
+	return nil
 }
