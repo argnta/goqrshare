@@ -1,6 +1,9 @@
 package apperror
 
-import "net/http"
+import (
+	"errors"
+	"net/http"
+)
 
 type KindError int
 
@@ -29,6 +32,9 @@ const (
 	KindFailStatFile
 	KindFailSaveFile
 	KindFailCreateFile
+	KindDirNotUsable
+	KindTTLInvalid
+	KindSizeInvalid
 )
 
 type Error struct {
@@ -53,6 +59,15 @@ type StatusResponseWriter struct {
 	Status int
 }
 
+func (w *StatusResponseWriter) WriteHeader(code int) {
+	w.Status = code
+	w.ResponseWriter.WriteHeader(code)
+}
+
+func (w *StatusResponseWriter) Unwrap() http.ResponseWriter {
+	return w.ResponseWriter
+}
+
 func (e *Error) Error() string {
 	if e.Err != nil {
 		return e.Msg + ": " + e.Err.Error()
@@ -65,15 +80,9 @@ func (e *Error) Unwrap() error {
 }
 
 func IsKind(err error, kind KindError) bool {
-	for err != nil {
-		if e, ok := err.(*Error); ok {
-			return e.Kind == kind
-		}
-		u, ok := err.(interface{ Unwrap() error })
-		if !ok {
-			return false
-		}
-		err = u.Unwrap()
+	var e *Error
+	if errors.As(err, &e) {
+		return e.Kind == kind
 	}
 	return false
 }
