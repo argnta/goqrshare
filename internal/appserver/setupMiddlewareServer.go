@@ -60,3 +60,16 @@ func withLogging(next http.Handler) http.Handler {
 		)
 	})
 }
+
+func withSecurityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h := w.Header()
+		h.Set("X-Content-Type-Options", "nosniff")
+		h.Set("Referrer-Policy", "no-referrer")
+		h.Set("X-Frame-Options", "DENY")
+		h.Set("Content-Security-Policy",
+			"default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; "+
+				"connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'")
+		next.ServeHTTP(w, r)
+	})
+}

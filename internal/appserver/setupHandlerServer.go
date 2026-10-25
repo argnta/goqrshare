@@ -6,13 +6,24 @@ import (
 	"golang-share-files/internal/apperror"
 	"io"
 	"log"
+	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
 )
 
 func (s *MainServer) handleDownload(w http.ResponseWriter, r *http.Request) {
-	fileDir := s.Options.UploadDir
+	if len(s.Options.Files) == 0 {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(apperror.ErrorResponse{
+			Code: "NO_FILE",
+			Msg:  "Tidak ada file yang dibagikan",
+		})
+		return
+	}
+
+	fileDir := s.Options.Files[0]
 
 	file, err := os.Open(fileDir)
 	if err != nil {
@@ -38,7 +49,7 @@ func (s *MainServer) handleDownload(w http.ResponseWriter, r *http.Request) {
 	defer file.Close()
 
 	fileInfo, err := file.Stat()
-	if err != nil {
+	if err != nil || fileInfo.IsDir() {
 		errStat := &apperror.Error{
 			Kind: apperror.KindFailStatFile,
 			Msg:  "Fail stat file",
@@ -59,17 +70,24 @@ func (s *MainServer) handleDownload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fileName := filepath.Base(fileDir)
-	w.Header().Set("Content-Disposition", "attachment; filename=\""+fileName+"\"")
+	disp := mime.FormatMediaType("attachment", map[string]string{"filename": fileName})
+	if disp == "" {
+		disp = "attachment"
+	}
+	w.Header().Set("Content-Disposition", disp)
 
 	http.ServeContent(w, r, fileName, fileInfo.ModTime(), file)
 
-	downloadCount := s.DownloadCount.Add(1)
+	if r.Method == http.MethodGet {
+		downloadCount := s.DownloadCount.Add(1)
+		log.Printf("selesai diunduh oleh %s: %s, total %d kali", r.RemoteAddr, fileName, downloadCount)
 
-	if s.Options.OneTime && downloadCount == 1 {
-		select {
-		case <-s.Done:
-		default:
-			close(s.Done)
+		if s.Options.OneTime {
+			select {
+			case <-s.Done:
+			default:
+				close(s.Done)
+			}
 		}
 	}
 }

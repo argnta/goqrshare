@@ -2,11 +2,12 @@ package appserver
 
 import (
 	"context"
+	"errors"
 	"golang-share-files/internal/apperror"
 	"net"
 	"net/http"
 	"strconv"
-	"sync"
+	"strings"
 	"time"
 )
 
@@ -19,7 +20,7 @@ func NewServer(opts Options) *MainServer {
 	base := "/" + opts.Token
 	mux := http.NewServeMux()
 	mux.HandleFunc("/"+opts.Token+"/", dataServer.handleDownload)
-	
+
 	if opts.IsUpload {
 		// mux.HandleFunc("GET "+base+"/{$}", .handleIndex)
 		mux.HandleFunc("POST "+base+"/upload", dataServer.handleUpload)
@@ -46,56 +47,67 @@ func NewServer(opts Options) *MainServer {
 	return dataServer
 }
 
-func (s *MainServer) Run(ctx context.Context) error {
+func (s *MainServer) Listen() error {
 	addr := net.JoinHostPort(s.Options.ListenerIP, strconv.Itoa(s.Options.Port))
-	listener, err := net.Listen("tcp", addr)
-
-	runError := &apperror.Error{
-		Kind: apperror.KindRunError,
-		Msg:  "Error run server",
-		Err:  err,
-	}
-
+	listen, err := net.Listen("tcp", addr)
 	if err != nil {
-		return runError
+		kind := apperror.KindRunError
+		msg := "gagal membuka port"
+		if isAddrInUse(err) {
+			kind = apperror.KindPortInUse
+			msg = "port sudah dipakai program lain (coba --port 0)"
+		}
+		return &apperror.Error{Kind: kind, Msg: msg, Err: err}
 	}
 
-	s.Options.Port = listener.Addr().(*net.TCPAddr).Port
+	s.listener = listen
+	s.Options.Port = listen.Addr().(*net.TCPAddr).Port
+	return nil
+}
+
+func isAddrInUse(err error) bool {
+	m := strings.ToLower(err.Error())
+	return strings.Contains(m, "address already in use") || strings.Contains(m, "only one usage of each socket address")
+}
+
+func (s *MainServer) Serve(ctx context.Context) error {
+	if s.listener == nil {
+		return &apperror.Error{
+			Kind: apperror.KindServerNotInitiated,
+			Msg:  "Listen() belum dipanggil",
+		}
+	}
 
 	if s.Options.Duration > 0 {
-		var once sync.Once
-		closeDone := func() {
-			once.Do(func() {
-				close(s.Done)
-			})
-		}
-
-		timer := time.AfterFunc(s.Options.Duration, closeDone)
+		timer := time.AfterFunc(s.Options.Duration, func() { s.Stop("waktu habis (ttl)") })
 		defer timer.Stop()
 	}
 
-	errChan := make(chan error, 1)
+	errCh := make(chan error, 1)
 	go func() {
-		err := s.Server.Serve(listener)
-		if err != nil && err != http.ErrServerClosed {
-			errChan <- err
+		err := s.Server.Serve(s.listener)
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			errCh <- err
 		}
 	}()
 
+	grace := 3 * time.Second
 	select {
 	case <-ctx.Done():
 	case <-s.Done:
-	case err := <-errChan:
-		return err
+		grace = 5 * time.Second // beri waktu koneksi yang masih menulis
+	case err := <-errCh:
+		return &apperror.Error{
+			Kind: apperror.KindRunError,
+			Msg:  "server berhenti karena error",
+			Err:  err,
+		}
 	}
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
-	return s.Shutdown(shutdownCtx)
+	return s.Shutdown(grace)
 }
 
-func (s *MainServer) Shutdown(ctx context.Context) error {
+func (s *MainServer) Shutdown(grace time.Duration) error {
 	if s.Server == nil {
 		errNil := &apperror.Error{
 			Kind: apperror.KindServerNotInitiated,
@@ -104,6 +116,9 @@ func (s *MainServer) Shutdown(ctx context.Context) error {
 		}
 		return errNil
 	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), grace)
+	defer cancel()
 
 	err := s.Server.Shutdown(ctx)
 	if err != nil {
