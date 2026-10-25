@@ -8,28 +8,20 @@ import (
 )
 
 func (c Config) Validate() error {
-	var err error
-
-	err = c.validateTarget()
-	if err != nil {
-		return err
+	checks := []func() error{
+		c.validateTarget,
+		c.validatePort,
+		c.validateTTL,
+		c.validateToken,
+		c.validateSize,
+		c.validateDir,
+		c.validateFiles,
 	}
-
-	err = c.validatePort()
-	if err != nil {
-		return err
+	for _, check := range checks {
+		if err := check(); err != nil {
+			return err
+		}
 	}
-
-	err = c.validateDir()
-	if err != nil {
-		return err
-	}
-
-	err = c.validateFiles()
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -56,6 +48,49 @@ func (c Config) validatePort() error {
 	return nil
 }
 
+func (c Config) validateTTL() error {
+	if c.TTL < 0 {
+		return &aperror.Error{
+			Kind: aperror.KindTTLInvalid,
+			Msg:  "--ttl tidak boleh negatif",
+		}
+	}
+	return nil
+}
+
+func (c Config) validateToken() error {
+	if c.Token == "" {
+		return nil
+	}
+	if len(c.Token) < 8 || len(c.Token) > 64 {
+		return &aperror.Error{
+			Kind: aperror.KindTokenInvalid,
+			Msg:  "--token harus 8-64 karakter",
+		}
+	}
+	for _, r := range c.Token {
+		ok := (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') ||
+			(r >= '0' && r <= '9') || r == '-' || r == '_'
+		if !ok {
+			return &aperror.Error{
+				Kind: aperror.KindTokenInvalid,
+				Msg:  "--token hanya boleh berisi A-Z a-z 0-9 - _",
+			}
+		}
+	}
+	return nil
+}
+
+func (c Config) validateSize() error {
+	if c.MaxUploadMB < 1 {
+		return &aperror.Error{
+			Kind: aperror.KindSizeInvalid,
+			Msg:  "--max-size minimal 1 (MB)",
+		}
+	}
+	return nil
+}
+
 func (c Config) validateDir() error {
 	if c.UploadDir == "" {
 		return nil
@@ -66,6 +101,27 @@ func (c Config) validateDir() error {
 			Msg:  "--dir hanya berlaku bersama --upload",
 		}
 	}
+
+	info, err := os.Stat(c.UploadDir)
+	if err != nil || !info.IsDir() {
+		return &aperror.Error{
+			Kind: aperror.KindDirNotUsable,
+			Msg:  "folder upload tidak ditemukan atau bukan folder: " + c.UploadDir,
+			Err:  err,
+		}
+	}
+
+	probe, err := os.CreateTemp(c.UploadDir, ".goshare-check-*")
+	if err != nil {
+		return &aperror.Error{
+			Kind: aperror.KindDirNotUsable,
+			Msg:  "folder upload tidak bisa ditulis: " + c.UploadDir,
+			Err:  err,
+		}
+	}
+	probe.Close()
+	os.Remove(probe.Name())
+
 	return nil
 }
 
@@ -99,6 +155,16 @@ func (c Config) validateFiles() error {
 				Msg:  "folder belum didukung: " + path,
 			}
 		}
+
+		f, openErr := os.Open(path)
+		if openErr != nil {
+			return &aperror.Error{
+				Kind: aperror.KindFileNotReadable,
+				Msg:  "file tidak bisa dibaca: " + path,
+				Err:  openErr,
+			}
+		}
+		f.Close()
 	}
 
 	return nil

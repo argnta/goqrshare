@@ -93,20 +93,33 @@ func isVirtualName(name string) bool {
 	return false
 }
 
-func pickFrom(filtered []IPCandidate) error {
-	if len(filtered) == 0 {
+func filterCands(cands []IPCandidate, keep func(IPCandidate) bool) []IPCandidate {
+	var out []IPCandidate
+	for _, c := range cands {
+		if keep(c) {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
+func pickFrom(pool []IPCandidate) error {
+	if len(pool) == 0 {
 		return &apperror.Error{
 			Kind: apperror.KindNoPrivateIP,
 			Msg:  "tidak ada IP privat yang cocok",
 		}
 	}
-	if len(filtered) > 1 {
-		return &apperror.Error{
-			Kind: apperror.KindAmbiguousIface,
-			Msg:  "lebih dari satu interface layak; tentukan dengan --iface",
-		}
+
+	names := make([]string, 0, len(pool))
+	for _, c := range pool {
+		names = append(names, fmt.Sprintf("%s (%s)", c.Name, c.IP))
 	}
-	return nil
+
+	return &apperror.Error{
+		Kind: apperror.KindAmbiguousIface,
+		Msg:  "lebih dari satu interface layak: " + strings.Join(names, ", ") + "; tentukan dengan --iface",
+	}
 }
 
 func PickByName(cands []IPCandidate, name string) (IPCandidate, error) {
@@ -114,7 +127,7 @@ func PickByName(cands []IPCandidate, name string) (IPCandidate, error) {
 	var bM *IPCandidate
 
 	for _, cand := range cands {
-		if cand.Name != name {
+		if !strings.EqualFold(cand.Name, name) {
 			continue
 		}
 
@@ -145,34 +158,40 @@ func PickByName(cands []IPCandidate, name string) (IPCandidate, error) {
 }
 
 func BestCandidate(cands []IPCandidate) (IPCandidate, error) {
-	var strict []IPCandidate
-	for _, c := range cands {
-		if c.IsPrivate && !c.IsVirtual {
-			strict = append(strict, c)
+	pool := filterCands(cands, func(c IPCandidate) bool { return c.IsPrivate && !c.IsVirtual })
+	if len(pool) == 0 {
+		pool = filterCands(cands, func(c IPCandidate) bool { return c.IsPrivate })
+	}
+
+	if len(pool) == 1 {
+		return pool[0], nil
+	}
+
+	if len(pool) > 1 {
+		if out := OutboundIP(); out != nil {
+			for _, c := range pool {
+				if c.IP.Equal(out) {
+					return c, nil
+				}
+			}
 		}
 	}
 
-	err := pickFrom(strict)
-	if err == nil {
-		return strict[0], nil
-	}
-	if !apperror.IsKind(err, apperror.KindNoPrivateIP) {
-		return IPCandidate{}, err
-	}
+	return IPCandidate{}, pickFrom(pool)
+}
 
-	var loose []IPCandidate
-	for _, c := range cands {
-		if c.IsPrivate {
-			loose = append(loose, c)
-		}
+func OutboundIP() net.IP {
+	conn, err := net.Dial("udp", "192.0.2.1:9")
+	if err != nil {
+		return nil
 	}
+	defer conn.Close()
 
-	err = pickFrom(loose)
-	if err == nil {
-		return loose[0], nil
+	addr, ok := conn.LocalAddr().(*net.UDPAddr)
+	if !ok {
+		return nil
 	}
-
-	return IPCandidate{}, err
+	return addr.IP.To4()
 }
 
 func FindCandidates() ([]IPCandidate, error) {
@@ -206,7 +225,7 @@ func FindCandidates() ([]IPCandidate, error) {
 				continue
 			}
 			ip4 := ipnet.IP.To4()
-			if ip4 == nil {
+			if ip4 == nil || ip4.IsLinkLocalUnicast() {
 				continue
 			}
 

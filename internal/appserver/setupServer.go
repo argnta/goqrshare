@@ -16,20 +16,31 @@ func NewServer(opts Options) *MainServer {
 		Done:    make(chan struct{}),
 	}
 
+	base := "/" + opts.Token
 	mux := http.NewServeMux()
 	mux.HandleFunc("/"+opts.Token+"/", dataServer.handleDownload)
+	
 	if opts.IsUpload {
-		mux.HandleFunc("/"+opts.Token+"/upload", dataServer.handleUpload)
+		// mux.HandleFunc("GET "+base+"/{$}", .handleIndex)
+		mux.HandleFunc("POST "+base+"/upload", dataServer.handleUpload)
+		if len(opts.Files) > 0 {
+			mux.HandleFunc("GET "+base+"/download", dataServer.handleDownload)
+		}
+	} else {
+		mux.HandleFunc("GET "+base+"/{$}", dataServer.handleDownload)
 	}
 
 	var handler http.Handler = mux
+	handler = withSecurityHeaders(handler)
 	if opts.Verbose {
 		handler = withLogging(handler)
 	}
 
 	dataServer.Server = &http.Server{
 		Handler:           handler,
-		ReadHeaderTimeout: 10 * time.Second, 
+		ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout:       60 * time.Second,
+		MaxHeaderBytes:    16 << 10,
 	}
 
 	return dataServer

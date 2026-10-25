@@ -13,8 +13,8 @@ func Render(url string) (string, error) {
 	config := qrterminal.Config{
 		Level:      qrterminal.L,
 		Writer:     &buf,
-		HalfBlocks: true, 
-		QuietZone:  1,
+		HalfBlocks: true,
+		QuietZone:  2,
 	}
 
 	qrterminal.GenerateWithConfig(url, config)
