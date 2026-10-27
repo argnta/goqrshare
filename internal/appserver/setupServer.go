@@ -21,7 +21,7 @@ func NewServer(opts Options) *MainServer {
 	mux := http.NewServeMux()
 
 	if opts.IsUpload {
-		// mux.HandleFunc("GET "+base+"/{$}", .handleIndex)
+		mux.HandleFunc("GET "+base+"/{$}", dataServer.handleIndex)
 		mux.HandleFunc("POST "+base+"/upload", dataServer.handleUpload)
 		if len(opts.Files) > 0 {
 			mux.HandleFunc("GET "+base+"/download", dataServer.handleDownload)
