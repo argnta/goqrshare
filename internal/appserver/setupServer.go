@@ -19,7 +19,6 @@ func NewServer(opts Options) *MainServer {
 
 	base := "/" + opts.Token
 	mux := http.NewServeMux()
-	mux.HandleFunc("/"+opts.Token+"/", dataServer.handleDownload)
 
 	if opts.IsUpload {
 		// mux.HandleFunc("GET "+base+"/{$}", .handleIndex)
@@ -34,7 +33,7 @@ func NewServer(opts Options) *MainServer {
 	var handler http.Handler = mux
 	handler = withSecurityHeaders(handler)
 	if opts.Verbose {
-		handler = withLogging(handler)
+		handler = withLogging(opts.Token, handler)
 	}
 
 	dataServer.Server = &http.Server{

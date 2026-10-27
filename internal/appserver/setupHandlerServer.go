@@ -2,15 +2,46 @@ package appserver
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"golang-share-files/internal/apperror"
 	"io"
+	"io/fs"
 	"log"
 	"mime"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
+	"strings"
 )
+
+type countingWriter struct {
+	http.ResponseWriter
+	n int
+}
+
+func sanitizeFilename(raw string) string {
+	raw = path.Base(strings.ReplaceAll(raw, "\\", "/"))
+
+	var b strings.Builder
+	for _, r := range raw {
+		switch {
+		case r < 32 || r == 127:
+			continue
+		case strings.ContainsRune(`<>:"/\|?*`, r):
+			b.WriteRune('_')
+		default:
+			b.WriteRune(r)
+		}
+	}
+
+	name := strings.Trim(b.String(), " .")
+	if name == "" {
+		return "upload.bin"
+	}
+	return name
+}
 
 func (s *MainServer) handleDownload(w http.ResponseWriter, r *http.Request) {
 	if len(s.Options.Files) == 0 {
@@ -76,9 +107,13 @@ func (s *MainServer) handleDownload(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Disposition", disp)
 
-	http.ServeContent(w, r, fileName, fileInfo.ModTime(), file)
+	cw := &countingWriter{
+		ResponseWriter: w,
+	}
 
-	if r.Method == http.MethodGet {
+	http.ServeContent(cw, r, fileName, fileInfo.ModTime(), file)
+
+	if r.Method == http.MethodGet && cw.n >= int(fileInfo.Size()) {
 		downloadCount := s.DownloadCount.Add(1)
 		log.Printf("selesai diunduh oleh %s: %s, total %d kali", r.RemoteAddr, fileName, downloadCount)
 
@@ -104,7 +139,8 @@ func (s *MainServer) handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := r.ParseMultipartForm(50 << 20)
+	r.Body = http.MaxBytesReader(w, r.Body, s.Options.MaxUploadBytes)
+	err := r.ParseMultipartForm(10 << 20)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusRequestEntityTooLarge)
@@ -129,24 +165,19 @@ func (s *MainServer) handleUpload(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	safeFileName := filepath.Base(header.Filename)
-
-	destPath := filepath.Join(s.Options.UploadDir, safeFileName)
+	safeFileName := sanitizeFilename(header.Filename)
 	ext := filepath.Ext(safeFileName)
-	nameWithoutExt := safeFileName[:len(safeFileName)-len(ext)]
+	nameWithoutExt := strings.TrimSuffix(safeFileName, ext)
 
-	counter := 1
-	for {
-		if _, err := os.Stat(destPath); os.IsNotExist(err) {
+	var dstFile *os.File
+	for counter := 1; ; counter++ {
+		dstFile, err = os.OpenFile(filepath.Join(s.Options.UploadDir, safeFileName), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+		if !errors.Is(err, fs.ErrExist) {
 			break
 		}
-
 		safeFileName = fmt.Sprintf("%s (%d)%s", nameWithoutExt, counter, ext)
-		destPath = filepath.Join(s.Options.UploadDir, safeFileName)
-		counter++
 	}
 
-	dstFile, err := os.Create(destPath)
 	if err != nil {
 		errCreate := &apperror.Error{
 			Kind: apperror.KindFailCreateFile,
@@ -163,10 +194,13 @@ func (s *MainServer) handleUpload(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	defer dstFile.Close()
-
 	_, err = io.Copy(dstFile, file)
+	if cerr := dstFile.Close(); err == nil {
+		err = cerr
+	}
+
 	if err != nil {
+		os.Remove(filepath.Join(s.Options.UploadDir, safeFileName))
 		errCopy := &apperror.Error{
 			Kind: apperror.KindFailSaveFile,
 			Msg:  "Gagal menyalin stream file",
@@ -191,4 +225,28 @@ func (s *MainServer) handleUpload(w http.ResponseWriter, r *http.Request) {
 		Message:  "File berhasil diunggah",
 		Filename: safeFileName,
 	})
+
+	if s.Options.OneTime {
+		select {
+		case <-s.Done:
+		default:
+			close(s.Done)
+		}
+	}
+}
+
+func (s *MainServer) handleIndex(w http.ResponseWriter, r *http.Request) {
+	data := pageData{MaxMB: s.Options.MaxUploadBytes >> 20}
+
+	if len(s.Options.Files) > 0 {
+		if info, err := os.Stat(s.Options.Files[0]); err == nil {
+			data.HasFile = true
+			data.FileName = filepath.Base(s.Options.Files[0])
+			data.FileSize = fmt.Sprintf("%.1f MB", float64(info.Size())/(1<<20))
+		}
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	pageTmpl.Execute(w, data)
 }
