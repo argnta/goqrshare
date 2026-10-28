@@ -118,11 +118,7 @@ func (s *MainServer) handleDownload(w http.ResponseWriter, r *http.Request) {
 		log.Printf("selesai diunduh oleh %s: %s, total %d kali", r.RemoteAddr, fileName, downloadCount)
 
 		if s.Options.OneTime {
-			select {
-			case <-s.Done:
-			default:
-				close(s.Done)
-			}
+			s.Stop("transfer selesai (--once)")
 		}
 	}
 }
@@ -227,11 +223,7 @@ func (s *MainServer) handleUpload(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if s.Options.OneTime {
-		select {
-		case <-s.Done:
-		default:
-			close(s.Done)
-		}
+		s.Stop("transfer selesai (--once)")
 	}
 }
 

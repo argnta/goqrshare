@@ -120,6 +120,11 @@ func (s *MainServer) Shutdown(grace time.Duration) error {
 	defer cancel()
 
 	err := s.Server.Shutdown(ctx)
+	if errors.Is(err, context.DeadlineExceeded) {
+		_ = s.Server.Close()
+		return nil
+	}
+
 	if err != nil {
 		errShutdown := &apperror.Error{
 			Kind: apperror.KindServerFailShutdown,
