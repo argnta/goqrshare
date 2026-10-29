@@ -18,7 +18,7 @@ import (
 	"golang-share-files/internal/qr"
 )
 
-var version = "dev"
+var version = "1.0.0"
 
 func main() {
 	os.Exit(run())
