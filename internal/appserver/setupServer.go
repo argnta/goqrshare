@@ -2,6 +2,7 @@ package appserver
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"golang-share-files/internal/apperror"
 	"net"
@@ -59,8 +60,19 @@ func (s *MainServer) Listen() error {
 		return &apperror.Error{Kind: kind, Msg: msg, Err: err}
 	}
 
-	s.listener = listen
 	s.Options.Port = listen.Addr().(*net.TCPAddr).Port
+
+	tlsCfg, err := newTLSConfig(s.Options.ListenerIP)
+	if err != nil {
+		listen.Close()
+		return &apperror.Error{
+			Kind: apperror.KindRunError,
+			Msg:  "gagal membuat sertifikat TLS",
+			Err:  err,
+		}
+	}
+
+	s.listener = tls.NewListener(listen, tlsCfg)
 	return nil
 }
 

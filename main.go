@@ -150,5 +150,5 @@ func printBanner(cfg config.Config, files []string, cand netutil.IPCandidate, ur
 		}
 	}
 
-	fmt.Println("Tekan Ctrl+C untuk berhenti. Koneksi TIDAK terenkripsi (HTTP): pakai di jaringan tepercaya.")
+	fmt.Println("Tekan Ctrl+C untuk berhenti. Koneksi dienkripsi (HTTPS, sertifikat self-signed): browser akan menampilkan peringatan, pilih Lanjutkan.")
 }

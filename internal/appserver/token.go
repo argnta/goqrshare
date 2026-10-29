@@ -32,7 +32,7 @@ func BuildURL(ip string, port int, token string) string {
 	host := net.JoinHostPort(ip, strconv.Itoa(port))
 
 	u := &url.URL{
-		Scheme: "http",
+		Scheme: "https",
 		Host:   host,
 		Path:   "/" + token + "/",
 	}
