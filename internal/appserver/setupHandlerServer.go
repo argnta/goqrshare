@@ -21,6 +21,12 @@ type countingWriter struct {
 	n int
 }
 
+func (c *countingWriter) Write(p []byte) (int, error) {
+	n, err := c.ResponseWriter.Write(p)
+	c.n += n
+	return n, err
+}
+
 func sanitizeFilename(raw string) string {
 	raw = path.Base(strings.ReplaceAll(raw, "\\", "/"))
 
