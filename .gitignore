@@ -1,3 +1,6 @@
 go.mod
 go.sum
 goshare.exe
+goshare-*
+dist/
+checksums.txt
