@@ -1,0 +1,43 @@
+name: Release Binaries
+
+on:
+  push:
+    tags:
+      - 'v*' 
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.1' 
+
+      - name: Build Cross-Platform Binaries
+        run: |
+          mkdir dist
+          VERSION=${GITHUB_REF_NAME#v} # Mengambil angka dari tag (v1.0.0 -> 1.0.0)
+          for t in windows/amd64 darwin/arm64 darwin/amd64 linux/amd64; do
+            os=${t%/*}; arch=${t#*/}; ext=""; [ $os = windows ] && ext=".exe"
+            echo "Building for $os/$arch..."
+            CGO_ENABLED=0 GOOS=$os GOARCH=$arch go build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o dist/goshare-$os-$arch$ext .
+          done
+
+      - name: Generate Checksums
+        run: |
+          cd dist
+          sha256sum * > checksums.txt
+          
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*
+          draft: true 
