@@ -435,10 +435,10 @@ Honest about what has and hasn't been checked:
 | Core logic, flags, routes, upload limits, file naming, `--once`/`--ttl`/Ctrl+C | Tested via `curl` and race detector on Linux |
 | HTTPS, self-signed certificate generation, TLS handshake, `--once` on downloads | Tested successfully via `curl` on Windows (v1.0.0) |
 | Cross-compilation 4 targets via GitHub Actions (`CGO_ENABLED=0`) | Successful (v1.0.0 release) |
-| Build with native `qrterminal/v4` and QR readable by phone camera | **Not yet verified** |
-| Web page on Chrome Android and Safari iOS (1 file, many files, >100 MB) | **Not yet verified** |
+| Build with native `qrterminal/v4` and QR readable by phone camera | Successful (v1.0.0 release) |
+| Web page on Chrome Android and Safari iOS (1 file, many files, >100 MB) | Successful (v1.0.0 release) |
 | macOS warnings and permissions (quarantine, Open Anyway, network dialog) | **Not yet verified** on actual Mac hardware |
-| Windows Firewall and SmartScreen dialogs | **Not yet verified** on actual Windows hardware (beyond testing) |
+| Windows Firewall and SmartScreen dialogs | Successful (v1.0.0 release) |
 | `.exe` and macOS binaries | **Built and available** via GitHub Releases |
 
 ---
