@@ -1,7 +1,7 @@
 package appserver
 
 import (
-	"golang-share-files/internal/apperror"
+	"goqrshare/internal/apperror"
 	"log"
 	"net/http"
 	"strings"

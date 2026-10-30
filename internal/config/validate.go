@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	aperror "golang-share-files/internal/apperror"
+	aperror "goqrshare/internal/apperror"
 )
 
 func (c Config) Validate() error {
@@ -111,7 +111,7 @@ func (c Config) validateDir() error {
 		}
 	}
 
-	probe, err := os.CreateTemp(c.UploadDir, ".goshare-check-*")
+	probe, err := os.CreateTemp(c.UploadDir, ".goqrshare-check-*")
 	if err != nil {
 		return &aperror.Error{
 			Kind: aperror.KindDirNotUsable,

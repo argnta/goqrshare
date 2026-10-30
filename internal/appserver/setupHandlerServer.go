@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"golang-share-files/internal/apperror"
+	"goqrshare/internal/apperror"
 	"io"
 	"io/fs"
 	"log"

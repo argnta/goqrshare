@@ -2,7 +2,7 @@ package appserver
 
 import (
 	"crypto/rand"
-	"golang-share-files/internal/apperror"
+	"goqrshare/internal/apperror"
 	"math/big"
 	"net"
 	"net/url"

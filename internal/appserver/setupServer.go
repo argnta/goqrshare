@@ -4,7 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
-	"golang-share-files/internal/apperror"
+	"goqrshare/internal/apperror"
 	"net"
 	"net/http"
 	"strconv"

@@ -2,7 +2,7 @@ package netutil
 
 import (
 	"fmt"
-	"golang-share-files/internal/apperror"
+	"goqrshare/internal/apperror"
 	"net"
 	"strings"
 )

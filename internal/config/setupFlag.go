@@ -8,11 +8,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"golang-share-files/internal/apperror"
+	"goqrshare/internal/apperror"
 )
 
 func newFlagSet(cfg *Config) *flag.FlagSet {
-	fs := flag.NewFlagSet("goshare", flag.ContinueOnError)
+	fs := flag.NewFlagSet("goqrshare", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 
 	fs.IntVar(&cfg.Port, "port", 0, "port HTTP (0 = pilih otomatis)")
@@ -30,11 +30,11 @@ func newFlagSet(cfg *Config) *flag.FlagSet {
 }
 
 func Usage(w io.Writer) {
-	fmt.Fprintln(w, "goshare - bagikan file lewat Wi-Fi lokal dengan QR code")
+	fmt.Fprintln(w, "goqrshare - bagikan file lewat Wi-Fi lokal dengan QR code")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Pemakaian:")
-	fmt.Fprintln(w, "  goshare [flag] <file>     bagikan satu file")
-	fmt.Fprintln(w, "  goshare --upload [flag]   terima file dari HP")
+	fmt.Fprintln(w, "  goqrshare [flag] <file>     bagikan satu file")
+	fmt.Fprintln(w, "  goqrshare --upload [flag]   terima file dari HP")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Flag:")
 	fs := newFlagSet(&Config{})

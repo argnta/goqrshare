@@ -25,7 +25,7 @@ func newTLSConfig(ip string) (*tls.Config, error) {
 
 	tmpl := &x509.Certificate{
 		SerialNumber: serial,
-		Subject:      pkix.Name{CommonName: "goshare"},
+		Subject:      pkix.Name{CommonName: "goqrshare"},
 		NotBefore:    time.Now().Add(-5 * time.Minute),
 		NotAfter:     time.Now().Add(12 * time.Hour),
 		KeyUsage:     x509.KeyUsageDigitalSignature,

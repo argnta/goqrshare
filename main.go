@@ -11,11 +11,11 @@ import (
 	"syscall"
 	"time"
 
-	"golang-share-files/internal/apperror"
-	"golang-share-files/internal/appserver"
-	"golang-share-files/internal/config"
-	"golang-share-files/internal/netutil"
-	"golang-share-files/internal/qr"
+	"goqrshare/internal/apperror"
+	"goqrshare/internal/appserver"
+	"goqrshare/internal/config"
+	"goqrshare/internal/netutil"
+	"goqrshare/internal/qr"
 )
 
 var version = "1.0.0"
@@ -40,7 +40,7 @@ func run() int {
 	}
 
 	if cfg.ShowVersion {
-		fmt.Println("goshare", version)
+		fmt.Println("GoQRShare", version)
 		return 0
 	}
 

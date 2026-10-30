@@ -16,7 +16,7 @@ const pageHTML = `<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>goshare</title>
+<title>GoQRShare</title>
 <style>
 :root{color-scheme:light dark;--bg:#f4f6f9;--card:#fff;--fg:#141922;--muted:#5d6877;--accent:#2563eb;--border:#d8dee6;--ok:#15803d;--err:#b91c1c}
 @media (prefers-color-scheme:dark){:root{--bg:#0e1217;--card:#171c24;--fg:#e8ecf2;--muted:#9aa6b5;--accent:#5b9dff;--border:#2a323d;--ok:#4ade80;--err:#f87171}}
@@ -37,7 +37,7 @@ progress{width:100%;margin-top:10px}
 </head>
 <body data-max-mb="{{.MaxMB}}">
 <main>
-<h1>goshare</h1>
+<h1>goqrshare</h1>
 {{if .HasFile}}
 <section>
 <h2>Unduh dari laptop</h2>
