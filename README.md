@@ -445,4 +445,4 @@ Honest about what has and hasn't been checked:
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the PolyForm Noncommercial License 1.0.0. You are free to use, modify, and share this software for non-commercial purposes. Commercial use is strictly prohibited without explicit permission.
